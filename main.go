@@ -2,7 +2,6 @@
 package main
 
 import (
-	_ "bufio"
 	"bytes"
 	"encoding/binary"
 	"fmt"
@@ -43,48 +42,60 @@ func main() {
 	//impL30R := loadDdbIRes("D:\\ecWork\\ohlsample\\impL30R_44100.DDB")
 	//impL30L := loadDdbIRes("D:\\ecWork\\ohlsample\\impL30L_44100.DDB")
 
-	size := 0
-	b := make([]byte, len(impR30R)*4)
-	outArr := make([]int16, len(b)/2)
+	frame := len(impR30R)
+	b := make([]byte, frame*4)
+	outArr := make([]int16, frame*2)
+	nextArr := make([]int16, len(impR30R)*2)
 	for n, e := f.Read(b); e == nil; n, e = f.Read(b) {
-		size = size + n
 		br := bytes.NewReader(b)
 		d := make([]int16, n/2)
 		if e := binary.Read(br, binary.LittleEndian, d); e != nil {
 			fmt.Println("binary.Read: ", e.Error())
 		}
-		dR := make([]int16, len(d)/2)
-		dL := make([]int16, len(dR))
-		for i := 0; i < len(dR); i++ {
+		curLen := n / 4
+		dR := make([]int16, curLen)
+		dL := make([]int16, curLen)
+		for i := 0; i < curLen; i++ {
 			dR[i] = d[2*i]
 			dL[i] = d[2*i+1]
 		}
 		tmpL := convolve(dR, impR30L)
 		tmpR := convolve(dR, impR30R)
-		for i := 0; i < len(dR); i++ {
-			outArr[2*i] = tmpL[i]
-			outArr[2*i+1] = tmpR[i]
+
+		for i := 0; i < curLen; i++ {
+			outArr[2*i] = int16(tmpL[i] / 100000)
+			outArr[2*i+1] = int16(tmpR[i] / 100000)
+		}
+		for i, na := range nextArr {
+			outArr[i] += na
 		}
 
 		if e := binary.Write(out, binary.LittleEndian, outArr); e != nil {
 			fmt.Println("binaly.Write: ", e.Error())
 		}
-		fmt.Println("size: ", size)
+
+		for i := 0; i < len(impR30R)-1; i++ {
+			nextArr[2*i] = int16(tmpL[curLen+i] / 100000)
+			nextArr[2*i+1] = int16(tmpR[curLen+i] / 100000)
+		}
+	}
+	if e := binary.Write(out, binary.LittleEndian, nextArr); e != nil {
+		fmt.Println("binary.Write: ", e.Error())
 	}
 }
-func convolve(sound []int16, imp []float64) []int16 {
-	res := make([]int16, len(sound)+len(imp))
-	var tmp float64
+
+func convolve(sound []int16, imp []int) []int {
+	res := make([]int, len(sound)+len(imp)-1)
 	for i, s := range sound {
+		ss := int(s)
 		for j, p := range imp {
-			tmp = float64(s) * p
-			res[i+j] = res[i+j] + int16(tmp*p)
+			res[i+j] += ss * p
 		}
 	}
 	return res
 }
 
-func loadDdbIRes(name string) []float64 {
+func loadDdbIRes(name string) []int {
 	f, err := os.Open(name)
 	if err != nil {
 		fmt.Print(err.Error())
@@ -93,12 +104,31 @@ func loadDdbIRes(name string) []float64 {
 	defer f.Close()
 
 	b := make([]byte, 4096)
-	res := make([]float64, 4096)
+	res := make([]float64, 0)
 	for n, e := f.Read(b); e == nil; n, e = f.Read(b) {
 		br := bytes.NewReader(b)
 		d := make([]float64, n/8)
 		binary.Read(br, binary.LittleEndian, d)
 		res = append(res, d...)
 	}
-	return res
+
+	ires := make([]int, 1400)
+	for i, r := range res[190:1590] {
+		ires[i] = int(r * 32768 * 4)
+	}
+
+	return ires
+}
+
+func findPeak(sig []int) (int, float64) {
+	max := float64(-1)
+	ind := 0
+	for i, s := range sig {
+		fs := float64(s)
+		if ss := fs * fs; max < ss {
+			max = ss
+			ind = i
+		}
+	}
+	return ind, max
 }
