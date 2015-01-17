@@ -39,12 +39,11 @@ func main() {
 	// todo: convert to DSB format
 	impR30R := loadDdbIRes("D:\\ecWork\\ohlsample\\impR30R_44100.DDB")
 	impR30L := loadDdbIRes("D:\\ecWork\\ohlsample\\impR30L_44100.DDB")
-	//impL30R := loadDdbIRes("D:\\ecWork\\ohlsample\\impL30R_44100.DDB")
-	//impL30L := loadDdbIRes("D:\\ecWork\\ohlsample\\impL30L_44100.DDB")
+	impL30R := loadDdbIRes("D:\\ecWork\\ohlsample\\impL30R_44100.DDB")
+	impL30L := loadDdbIRes("D:\\ecWork\\ohlsample\\impL30L_44100.DDB")
 
 	frame := len(impR30R)
 	b := make([]byte, frame*4)
-	outArr := make([]int16, frame*2)
 	nextArr := make([]int16, len(impR30R)*2)
 	for n, e := f.Read(b); e == nil; n, e = f.Read(b) {
 		br := bytes.NewReader(b)
@@ -59,29 +58,37 @@ func main() {
 			dR[i] = d[2*i]
 			dL[i] = d[2*i+1]
 		}
-		tmpL := convolve(dR, impR30L)
-		tmpR := convolve(dR, impR30R)
 
-		for i := 0; i < curLen; i++ {
-			outArr[2*i] = int16(tmpL[i] / 100000)
-			outArr[2*i+1] = int16(tmpR[i] / 100000)
-		}
+		chR := convoCh(dR, impR30R, impR30L)
+		chL := convoCh(dL, impL30R, impL30L)
+		outArr := make([]int16, len(chR))
 		for i, na := range nextArr {
 			outArr[i] += na
 		}
+		for i := 0; i < len(outArr); i++ {
+			outArr[i] += chR[i] + chL[i]
+		}
 
-		if e := binary.Write(out, binary.LittleEndian, outArr); e != nil {
+		if e := binary.Write(out, binary.LittleEndian, outArr[:curLen*2]); e != nil {
 			fmt.Println("binaly.Write: ", e.Error())
 		}
-
-		for i := 0; i < len(impR30R)-1; i++ {
-			nextArr[2*i] = int16(tmpL[curLen+i] / 100000)
-			nextArr[2*i+1] = int16(tmpR[curLen+i] / 100000)
-		}
+		nextArr = outArr[curLen*2:]
 	}
 	if e := binary.Write(out, binary.LittleEndian, nextArr); e != nil {
 		fmt.Println("binary.Write: ", e.Error())
 	}
+}
+
+func convoCh(s []int16, iR []int, iL []int) []int16 {
+	tmpR := convolve(s, iR)
+	tmpL := convolve(s, iL)
+	outLen := len(tmpR) * 2
+	outArr := make([]int16, outLen)
+	for i := 0; i < len(tmpR); i++ {
+		outArr[2*i] = int16(tmpR[i] / 100000)
+		outArr[2*i+1] = int16(tmpL[i] / 100000)
+	}
+	return outArr
 }
 
 func convolve(sound []int16, imp []int) []int {
@@ -104,7 +111,7 @@ func loadDdbIRes(name string) []int {
 	defer f.Close()
 
 	b := make([]byte, 4096)
-	res := make([]float64, 0)
+	res := make([]float64, 0, 4096)
 	for n, e := f.Read(b); e == nil; n, e = f.Read(b) {
 		br := bytes.NewReader(b)
 		d := make([]float64, n/8)
