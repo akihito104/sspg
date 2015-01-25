@@ -5,12 +5,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	dsp "gos/dsp"
+	loader "gos/loader"
 	"os"
 	"runtime/pprof"
 )
-
-// D:\ecWork\ohlsample
-// imp{L|R}{30|45}{L|R}_44100.DDB
 
 func main() {
 	if len(os.Args[1:]) != 1 {
@@ -36,10 +35,22 @@ func main() {
 	}
 	defer out.Close()
 
-	impR30R := loadDdbIRes("../../../impR30R_44100.DDB")
-	impR30L := loadDdbIRes("../../../impR30L_44100.DDB")
-	impL30R := loadDdbIRes("../../../impL30R_44100.DDB")
-	impL30L := loadDdbIRes("../../../impL30L_44100.DDB")
+	impR30R := loadDdbIRes("../resources/main/impR30R_44100.DDB")
+	if impR30R == nil {
+		return
+	}
+	impR30L := loadDdbIRes("../resources/main/impR30L_44100.DDB")
+	if impR30L == nil {
+		return
+	}
+	impL30R := loadDdbIRes("../resources/main/impL30R_44100.DDB")
+	if impL30R == nil {
+		return
+	}
+	impL30L := loadDdbIRes("../resources/main/impL30L_44100.DDB")
+	if impL30L == nil {
+		return
+	}
 
 	frame := len(impR30R)
 	b := make([]byte, frame*4)
@@ -82,8 +93,8 @@ func add(out, adder []int16) {
 }
 
 func convoCh(s []int16, iR []int, iL []int) []int16 {
-	tmpR := convolve(s, iR)
-	tmpL := convolve(s, iL)
+	tmpR := dsp.Convolve(s, iR)
+	tmpL := dsp.Convolve(s, iL)
 	outLen := len(tmpR) * 2
 	outArr := make([]int16, outLen)
 	for i, a := range tmpR {
@@ -95,39 +106,9 @@ func convoCh(s []int16, iR []int, iL []int) []int16 {
 	return outArr
 }
 
-func convolve(sound []int16, imp []int) []int {
-	res := make([]int, len(sound)+len(imp)-1)
-	for i, s := range sound {
-		ss := int(s)
-		for j, p := range imp {
-			res[i+j] += ss * p
-		}
-	}
-	return res
-}
-
 func loadDdbIRes(name string) []int {
-	f, err := os.Open(name)
-	if err != nil {
-		fmt.Print(err.Error())
-		return nil
-	}
-	defer f.Close()
-
-	b := make([]byte, 4096)
-	res := make([]float64, 0, 4096)
-	for n, e := f.Read(b); e == nil; n, e = f.Read(b) {
-		br := bytes.NewReader(b)
-		d := make([]float64, n/8)
-		binary.Read(br, binary.LittleEndian, d)
-		res = append(res, d...)
-	}
-
-	ires := make([]int, 1400)
-	for i, r := range res[190:1590] {
-		ires[i] = int(r * 32768 * 4)
-	}
-
+	res := loader.LoadDdb(name)
+	ires := loader.ResliceToIntArr(190, 1590, res, 32768*4)
 	return ires
 }
 
