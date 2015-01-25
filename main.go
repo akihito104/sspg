@@ -36,11 +36,10 @@ func main() {
 	}
 	defer out.Close()
 
-	// todo: convert to DSB format
-	impR30R := loadDdbIRes("D:\\ecWork\\ohlsample\\impR30R_44100.DDB")
-	impR30L := loadDdbIRes("D:\\ecWork\\ohlsample\\impR30L_44100.DDB")
-	impL30R := loadDdbIRes("D:\\ecWork\\ohlsample\\impL30R_44100.DDB")
-	impL30L := loadDdbIRes("D:\\ecWork\\ohlsample\\impL30L_44100.DDB")
+	impR30R := loadDdbIRes("../../../impR30R_44100.DDB")
+	impR30L := loadDdbIRes("../../../impR30L_44100.DDB")
+	impL30R := loadDdbIRes("../../../impL30R_44100.DDB")
+	impL30L := loadDdbIRes("../../../impL30L_44100.DDB")
 
 	frame := len(impR30R)
 	b := make([]byte, frame*4)
@@ -62,12 +61,9 @@ func main() {
 		chR := convoCh(dR, impR30R, impR30L)
 		chL := convoCh(dL, impL30R, impL30L)
 		outArr := make([]int16, len(chR))
-		for i, na := range nextArr {
-			outArr[i] += na
-		}
-		for i := 0; i < len(outArr); i++ {
-			outArr[i] += chR[i] + chL[i]
-		}
+		add(outArr, nextArr)
+		add(outArr, chR)
+		add(outArr, chL)
 
 		if e := binary.Write(out, binary.LittleEndian, outArr[:curLen*2]); e != nil {
 			fmt.Println("binaly.Write: ", e.Error())
@@ -79,14 +75,22 @@ func main() {
 	}
 }
 
+func add(out, adder []int16) {
+	for i, a := range adder {
+		out[i] += a
+	}
+}
+
 func convoCh(s []int16, iR []int, iL []int) []int16 {
 	tmpR := convolve(s, iR)
 	tmpL := convolve(s, iL)
 	outLen := len(tmpR) * 2
 	outArr := make([]int16, outLen)
-	for i := 0; i < len(tmpR); i++ {
-		outArr[2*i] = int16(tmpR[i] / 100000)
-		outArr[2*i+1] = int16(tmpL[i] / 100000)
+	for i, a := range tmpR {
+		outArr[2*i] = int16(a / 100000)
+	}
+	for i, a := range tmpL {
+		outArr[2*i+1] = int16(a / 100000)
 	}
 	return outArr
 }
