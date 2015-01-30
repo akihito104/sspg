@@ -5,8 +5,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	dsp "gos/dsp"
-	loader "gos/loader"
+	dsp "github.com/akihito104/sspg/dsp"
+	loader "github.com/akihito104/sspg/loader"
 	"os"
 	"runtime/pprof"
 )
