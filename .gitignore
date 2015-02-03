@@ -2,3 +2,4 @@ bin
 resources
 out.pcm
 *.cpuprofile
+.idea

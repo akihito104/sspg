@@ -7,6 +7,7 @@ import (
 	"fmt"
 	dsp "github.com/akihito104/sspg/dsp"
 	loader "github.com/akihito104/sspg/loader"
+	//	"io"
 	"os"
 	"runtime/pprof"
 )
@@ -28,7 +29,7 @@ func main() {
 	}
 	defer f.Close()
 
-	out, err := os.OpenFile("out.pcm", os.O_RDWR|os.O_APPEND, 0660)
+	out, err := os.Create("out.pcm")
 	if err != nil {
 		fmt.Println(err.Error())
 		return
