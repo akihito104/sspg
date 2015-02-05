@@ -44,11 +44,9 @@ func OpenWav(fname string) (wav LnrPcmWav, err error) {
 		f.Close()
 		return wav, e
 	}
-	for i, t := range []byte("fmt ") {
-		if tag[i] != t {
-			f.Close()
-			return wav, errors.New("illegal format: fmt chunk is not found.")
-		}
+	if !compareTag("fmt ", tag) {
+		f.Close()
+		return wav, errors.New("illegal format: fmt chunk is not found.")
 	}
 
 	f.Read(make([]byte, 2))
@@ -68,16 +66,23 @@ func OpenWav(fname string) (wav LnrPcmWav, err error) {
 		f.Close()
 		return wav, e
 	}
-	for i, t := range []byte("data") {
-		if tag[i] != t {
-			f.Close()
-			return wav, errors.New("illegal format: data chunk is not found.")
-		}
+	if !compareTag("data", tag) {
+		f.Close()
+		return wav, errors.New("illegal format: data chunk is not found.")
 	}
 	f.Read(make([]byte, 4))
 
 	wav.File = f
 	return LnrPcmWav{ChCount: chc, SampFreq: int(fs), File: f}, nil
+}
+
+func compareTag(tag string, b []byte) bool {
+	for i, t := range []byte(tag) {
+		if b[i] != t {
+			return false
+		}
+	}
+	return true
 }
 
 func (w *LnrPcmWav) Close() error {
