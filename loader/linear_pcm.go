@@ -79,3 +79,10 @@ func OpenWav(fname string) (wav LnrPcmWav, err error) {
 	wav.File = f
 	return LnrPcmWav{ChCount: chc, SampFreq: int(fs), File: f}, nil
 }
+
+func (w *LnrPcmWav) Close() error {
+	if w.File != nil {
+		return w.File.Close()
+	}
+	return nil
+}

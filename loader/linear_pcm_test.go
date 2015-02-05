@@ -9,7 +9,7 @@ func TestOpenWav(t *testing.T) {
 	fname := "../resources/test/yamanosususme_ss/natsuiro/01-AudioTrack.wav"
 	wav, err := OpenWav(fname)
 	if wav.File != nil {
-		defer wav.File.Close()
+		defer wav.Close()
 	}
 
 	if err != nil {
