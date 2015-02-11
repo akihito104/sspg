@@ -93,7 +93,7 @@ func add(out, adder []int16) {
 	}
 }
 
-func convoCh(s []int16, iR []int, iL []int) []int16 {
+func convoCh(s []int16, iR []int32, iL []int32) []int16 {
 	tmpR := dsp.Convolve(s, iR)
 	tmpL := dsp.Convolve(s, iL)
 	outLen := len(tmpR) * 2
@@ -107,7 +107,7 @@ func convoCh(s []int16, iR []int, iL []int) []int16 {
 	return outArr
 }
 
-func loadDdbIRes(name string) []int {
+func loadDdbIRes(name string) []int32 {
 	res := loader.LoadDdb(name)
 	ires := loader.ResliceToIntArr(190, 1590, res, 32768*4)
 	return ires

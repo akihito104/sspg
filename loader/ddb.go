@@ -26,14 +26,14 @@ func LoadDdb(path string) []float64 {
 	return res
 }
 
-func ToIntArr(in []float64, scale float64) []int {
-	out := make([]int, len(in))
+func ToIntArr(in []float64, scale float64) []int32 {
+	out := make([]int32, len(in))
 	for i, a := range in {
-		out[i] = int(a * scale)
+		out[i] = int32(a * scale)
 	}
 	return out
 }
 
-func ResliceToIntArr(from, to int, in []float64, scale float64) []int {
+func ResliceToIntArr(from, to int, in []float64, scale float64) []int32 {
 	return ToIntArr(in[from:to], scale)
 }

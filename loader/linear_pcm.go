@@ -8,15 +8,19 @@ import (
 	"strings"
 )
 
+const (
+	riffHeader = "RIFF\x00\x00\x00\x00WAVE"
+)
+
 type LnrPcmWav struct {
 	ChCount  int16
-	SampFreq int
+	SampFreq int32
 	File     *os.File
 }
 
 func OpenWav(fname string) (wav LnrPcmWav, err error) {
 	f, err := os.Open(fname)
-	wav = LnrPcmWav{ChCount: int16(0), SampFreq: int(0), File: nil}
+	wav = LnrPcmWav{ChCount: int16(0), SampFreq: int32(0), File: nil}
 	if err != nil {
 		return wav, err
 	}
@@ -25,7 +29,7 @@ func OpenWav(fname string) (wav LnrPcmWav, err error) {
 	}
 
 	rmask := []byte("\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xFF\xFF\xFF\xFF")
-	rpat := []byte("RIFF\x00\x00\x00\x00WAVE")
+	//rpat := []byte("RIFF\x00\x00\x00\x00WAVE")
 	riff := make([]byte, len(rmask))
 	if _, e := f.Read(riff); e != nil {
 		f.Close()
@@ -33,7 +37,7 @@ func OpenWav(fname string) (wav LnrPcmWav, err error) {
 	}
 	for i, r := range riff {
 		b := r & rmask[i]
-		if rpat[i] != b {
+		if byte(riffHeader[i]) != b {
 			f.Close()
 			return wav, errors.New("illegal format: the file is not RIFF WAVE.")
 		}
@@ -72,8 +76,7 @@ func OpenWav(fname string) (wav LnrPcmWav, err error) {
 	}
 	f.Read(make([]byte, 4))
 
-	wav.File = f
-	return LnrPcmWav{ChCount: chc, SampFreq: int(fs), File: f}, nil
+	return LnrPcmWav{ChCount: chc, SampFreq: fs, File: f}, nil
 }
 
 func compareTag(tag string, b []byte) bool {
@@ -83,6 +86,23 @@ func compareTag(tag string, b []byte) bool {
 		}
 	}
 	return true
+}
+
+func Create(chCount int16, fs int32, fname string) (wav LnrPcmWav, err error) {
+	f, err := os.Create(fname)
+	f.Write([]byte(riffHeader))
+
+	f.Write([]byte("fmt "))
+	f.Write([]byte("\x10")) // length of fmt chunk (bytes)
+	f.Write([]byte("\x01")) // format id (linear pcm)
+	binary.Write(f, binary.LittleEndian, chCount)
+	binary.Write(f, binary.LittleEndian, fs)
+	binary.Write(f, binary.LittleEndian, int32(2*int32(chCount)*fs))
+	f.Write([]byte("\x10")) // bit/sample
+
+	f.Write([]byte("data"))
+	f.Write([]byte("\x00")) // all of sound data length filled at called when Close
+	return LnrPcmWav{ChCount: chCount, SampFreq: fs, File: f}, err
 }
 
 func (w *LnrPcmWav) Close() error {
