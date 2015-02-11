@@ -29,7 +29,6 @@ func OpenWav(fname string) (wav LnrPcmWav, err error) {
 	}
 
 	rmask := []byte("\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xFF\xFF\xFF\xFF")
-	//rpat := []byte("RIFF\x00\x00\x00\x00WAVE")
 	riff := make([]byte, len(rmask))
 	if _, e := f.Read(riff); e != nil {
 		f.Close()
@@ -42,50 +41,30 @@ func OpenWav(fname string) (wav LnrPcmWav, err error) {
 			return wav, errors.New("illegal format: the file is not RIFF WAVE.")
 		}
 	}
-	tag := make([]byte, 4)
 
-	if _, e := f.Read(tag); e != nil {
+	if e := checkTag(f, "fmt "); e != nil {
 		f.Close()
 		return wav, e
 	}
-	if !compareTag("fmt ", tag) {
-		f.Close()
-		return wav, errors.New("illegal format: fmt chunk is not found.")
-	}
-
-	f.Read(make([]byte, 2))
 	var chsize int32
-	err = binary.Read(f, binary.LittleEndian, &chsize)
-	if err != nil {
+	if e := binary.Read(f, binary.LittleEndian, &chsize); e != nil {
 		f.Close()
-		return wav, err
+		return wav, e
 	}
+	f.Read(make([]byte, 2))
 	chc := int16(0)
 	binary.Read(f, binary.LittleEndian, &chc)
 	fs := int32(0)
 	binary.Read(f, binary.LittleEndian, &fs)
-	f.Read(make([]byte, 4+2+2))
+	f.Read(make([]byte, chsize-8))
 
-	if _, e := f.Read(tag); e != nil {
+	if e := checkTag(f, "data"); e != nil {
 		f.Close()
 		return wav, e
-	}
-	if !compareTag("data", tag) {
-		f.Close()
-		return wav, errors.New("illegal format: data chunk is not found.")
 	}
 	f.Read(make([]byte, 4))
 
 	return LnrPcmWav{ChCount: chc, SampFreq: fs, File: f}, nil
-}
-
-func compareTag(tag string, b []byte) bool {
-	for i, t := range []byte(tag) {
-		if b[i] != t {
-			return false
-		}
-	}
-	return true
 }
 
 func Create(chCount int16, fs int32, fname string) (wav LnrPcmWav, err error) {
@@ -110,4 +89,24 @@ func (w *LnrPcmWav) Close() error {
 		return w.File.Close()
 	}
 	return nil
+}
+
+func checkTag(f *os.File, tag string) error {
+	b := make([]byte, len(tag))
+	if _, e := f.Read(b); e != nil {
+		return e
+	}
+	if !equals(tag, b) {
+		return errors.New("illegal format: " + tag + "chunk is not found.")
+	}
+	return nil
+}
+
+func equals(tag string, b []byte) bool {
+	for i, t := range []byte(tag) {
+		if b[i] != t {
+			return false
+		}
+	}
+	return true
 }
