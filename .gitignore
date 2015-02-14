@@ -3,3 +3,4 @@ resources
 out.pcm
 *.cpuprofile
 .idea
+*.iml
