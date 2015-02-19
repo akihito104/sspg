@@ -1,12 +1,13 @@
 package loader
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
-    "bytes")
+)
 
 const (
 	riffHeader = "RIFF\x00\x00\x00\x00WAVE"
@@ -16,12 +17,12 @@ type LnrPcmWav struct {
 	ChCount  int16
 	SampFreq int32
 	File     *os.File
-    Flag     int
+	Flag     int
 }
 
 func OpenWav(fname string) (wav LnrPcmWav, err error) {
 	f, err := os.Open(fname)
-	wav = LnrPcmWav{ChCount: int16(0), SampFreq: int32(0), File: nil,Flag: os.O_RDONLY}
+	wav = LnrPcmWav{ChCount: int16(0), SampFreq: int32(0), File: nil, Flag: os.O_RDONLY}
 	if err != nil {
 		return wav, err
 	}
@@ -73,13 +74,13 @@ func Create(chCount int16, fs int32, fname string) (wav LnrPcmWav, err error) {
 	f.Write([]byte(riffHeader))
 
 	f.Write([]byte("fmt "))
-    binary.Write(f, binary.LittleEndian, int32(16)) // length of fmt chunk (bytes)
-	binary.Write(f, binary.LittleEndian, int16(1)) // format id (linear pcm)
-	binary.Write(f, binary.LittleEndian, chCount)  // channle count
-	binary.Write(f, binary.LittleEndian, fs)       // sampling frequency (Hz)
+	binary.Write(f, binary.LittleEndian, int32(16))                  // length of fmt chunk (bytes)
+	binary.Write(f, binary.LittleEndian, int16(1))                   // format id (linear pcm)
+	binary.Write(f, binary.LittleEndian, chCount)                    // channle count
+	binary.Write(f, binary.LittleEndian, fs)                         // sampling frequency (Hz)
 	binary.Write(f, binary.LittleEndian, int32(2*int32(chCount)*fs)) // data speed (bytes/sec)
-	binary.Write(f, binary.LittleEndian, int16(4)) // bytes/sample
-    binary.Write(f, binary.LittleEndian, int16(16)) // quantity size
+	binary.Write(f, binary.LittleEndian, int16(4))                   // bytes/sample
+	binary.Write(f, binary.LittleEndian, int16(16))                  // quantity size
 
 	f.Write([]byte("data"))
 	binary.Write(f, binary.LittleEndian, int32(0)) // all of sound data length filled at called when Close
@@ -87,23 +88,25 @@ func Create(chCount int16, fs int32, fname string) (wav LnrPcmWav, err error) {
 }
 
 func (w *LnrPcmWav) Close() error {
-    if w.File == nil {
-        return errors.New("File is nil.")
-    }
-    if w.Flag == os.O_RDWR {
-        fi,_ := w.File.Stat()
-        size := fi.Size()
-        w.File.WriteAt(toBytes(int32(size-8)), 4)
-        w.File.WriteAt(toBytes(int32(size-44)), 40)
-    }
+	if w.File == nil {
+		return errors.New("File is nil.")
+	}
+	if w.Flag == os.O_RDWR {
+		fi, _ := w.File.Stat()
+		size := fi.Size()
+		if _, e := w.File.WriteAt(toBytes(int32(size-8)), 4); e != nil {
+			return e
+		}
+		w.File.WriteAt(toBytes(int32(size-44)), 40)
+	}
 	return w.File.Close()
 }
 
 func toBytes(num int32) []byte {
-    res := make([]byte, 4)
-    w := bytes.NewBuffer(res)
-    binary.Write(w, binary.LittleEndian, num)
-    return res
+	res := make([]byte, 4)
+	w := bytes.NewBuffer(res)
+	binary.Write(w, binary.LittleEndian, int32(num))
+	return w.Bytes()[4:]
 }
 
 func checkTag(f *os.File, tag string) error {
