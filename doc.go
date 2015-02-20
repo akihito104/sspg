@@ -1,6 +1,6 @@
-// gos project doc.go
+// sspg project doc.go
 
 /*
-gos document
+sspg document
 */
 package main

@@ -5,8 +5,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	dsp "github.com/akihito104/sspg/dsp"
-	loader "github.com/akihito104/sspg/loader"
+	"github.com/akihito104/sspg/dsp"
+	"github.com/akihito104/sspg/loader"
+	//	"io"
 	"os"
 	"runtime/pprof"
 )
@@ -28,7 +29,7 @@ func main() {
 	}
 	defer f.Close()
 
-	out, err := os.OpenFile("out.pcm", os.O_RDWR|os.O_APPEND, 0660)
+	out, err := loader.Create(2, 44100, "out.wav")
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -76,12 +77,12 @@ func main() {
 		add(outArr, chR)
 		add(outArr, chL)
 
-		if e := binary.Write(out, binary.LittleEndian, outArr[:curLen*2]); e != nil {
+		if e := binary.Write(out.File, binary.LittleEndian, outArr[:curLen*2]); e != nil {
 			fmt.Println("binaly.Write: ", e.Error())
 		}
 		nextArr = outArr[curLen*2:]
 	}
-	if e := binary.Write(out, binary.LittleEndian, nextArr); e != nil {
+	if e := binary.Write(out.File, binary.LittleEndian, nextArr); e != nil {
 		fmt.Println("binary.Write: ", e.Error())
 	}
 }
@@ -92,7 +93,7 @@ func add(out, adder []int16) {
 	}
 }
 
-func convoCh(s []int16, iR []int, iL []int) []int16 {
+func convoCh(s []int16, iR []int32, iL []int32) []int16 {
 	tmpR := dsp.Convolve(s, iR)
 	tmpL := dsp.Convolve(s, iL)
 	outLen := len(tmpR) * 2
@@ -106,7 +107,7 @@ func convoCh(s []int16, iR []int, iL []int) []int16 {
 	return outArr
 }
 
-func loadDdbIRes(name string) []int {
+func loadDdbIRes(name string) []int32 {
 	res := loader.LoadDdb(name)
 	ires := loader.ResliceToIntArr(190, 1590, res, 32768*4)
 	return ires
