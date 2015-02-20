@@ -4,3 +4,4 @@ out.pcm
 *.cpuprofile
 .idea
 *.iml
+*.wav

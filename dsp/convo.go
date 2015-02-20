@@ -1,11 +1,11 @@
 package dsp
 
-func Convolve(x []int16, y []int32) []int32 {
-	res := make([]int32, len(x)+len(y)-1)
+func Convolve(x []int16, y []int32) []int64 {
+	res := make([]int64, len(x)+len(y)-1)
 	for i, s := range x {
-		ss := int32(s)
+		ss := int64(s)
 		for j, p := range y {
-			res[i+j] += ss * p
+			res[i+j] += ss * int64(p)
 		}
 	}
 	return res
