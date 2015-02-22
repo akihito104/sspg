@@ -2,12 +2,9 @@
 package main
 
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
 	"github.com/akihito104/sspg/dsp"
 	"github.com/akihito104/sspg/loader"
-	//	"io"
 	"os"
 	"runtime/pprof"
 )
@@ -22,7 +19,7 @@ func main() {
 	pprof.StartCPUProfile(pproff)
 	defer pprof.StopCPUProfile()
 
-	f, err := os.Open(fname)
+	f, err := loader.OpenWav(fname)
 	if err != nil {
 		fmt.Print(err.Error())
 		return
@@ -54,15 +51,10 @@ func main() {
 	}
 
 	frame := len(impR30R)
-	b := make([]byte, frame*4)
+	d := make([]int16, frame*2)
 	nextArr := make([]int16, len(impR30R)*2)
-	for n, e := f.Read(b); e == nil; n, e = f.Read(b) {
-		br := bytes.NewReader(b)
-		d := make([]int16, n/2)
-		if e := binary.Read(br, binary.LittleEndian, d); e != nil {
-			fmt.Println("binary.Read: ", e.Error())
-		}
-		curLen := n / 4
+	for n, e := f.Read(d); e == nil; n, e = f.Read(d) {
+		curLen := n / 2
 		dR := make([]int16, curLen)
 		dL := make([]int16, curLen)
 		for i := 0; i < curLen; i++ {
@@ -76,7 +68,6 @@ func main() {
 		add(outArr, nextArr)
 		add(outArr, chR)
 		add(outArr, chL)
-
 
 		if _, e := out.Write(outArr[:curLen*2]); e != nil {
 			fmt.Println("binaly.Write: ", e.Error())
