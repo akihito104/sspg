@@ -77,12 +77,13 @@ func main() {
 		add(outArr, chR)
 		add(outArr, chL)
 
-		if e := binary.Write(out.File, binary.LittleEndian, outArr[:curLen*2]); e != nil {
+
+		if _, e := out.Write(outArr[:curLen*2]); e != nil {
 			fmt.Println("binaly.Write: ", e.Error())
 		}
 		nextArr = outArr[curLen*2:]
 	}
-	if e := binary.Write(out.File, binary.LittleEndian, nextArr); e != nil {
+	if _, e := out.Write(nextArr); e != nil {
 		fmt.Println("binary.Write: ", e.Error())
 	}
 }

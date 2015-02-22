@@ -17,12 +17,12 @@ type LnrPcmWav struct {
 	ChCount  int16
 	SampFreq int32
 	File     *os.File
-	Flag     int
+	flag     int
 }
 
 func OpenWav(fname string) (wav LnrPcmWav, err error) {
 	f, err := os.Open(fname)
-	wav = LnrPcmWav{ChCount: int16(0), SampFreq: int32(0), File: nil, Flag: os.O_RDONLY}
+	wav = LnrPcmWav{ChCount: int16(0), SampFreq: int32(0), File: nil, flag: os.O_RDONLY}
 	if err != nil {
 		return wav, err
 	}
@@ -66,7 +66,7 @@ func OpenWav(fname string) (wav LnrPcmWav, err error) {
 	}
 	f.Read(make([]byte, 4))
 
-	return LnrPcmWav{ChCount: chc, SampFreq: fs, File: f, Flag: os.O_RDONLY}, nil
+	return LnrPcmWav{ChCount: chc, SampFreq: fs, File: f, flag: os.O_RDONLY}, nil
 }
 
 func Create(chCount int16, fs int32, fname string) (wav LnrPcmWav, err error) {
@@ -84,14 +84,33 @@ func Create(chCount int16, fs int32, fname string) (wav LnrPcmWav, err error) {
 
 	f.Write([]byte("data"))
 	binary.Write(f, binary.LittleEndian, int32(0)) // all of sound data length filled at called when Close
-	return LnrPcmWav{ChCount: chCount, SampFreq: fs, File: f, Flag: os.O_RDWR}, err
+	return LnrPcmWav{ChCount: chCount, SampFreq: fs, File: f, flag: os.O_RDWR}, err
+}
+
+func (w *LnrPcmWav) Read(d []int16) (int, error) {
+	buf := make([]byte, len(d)*2)
+	n, e := w.File.Read(buf)
+	if e != nil {
+		return 0, e
+	}
+	br := bytes.NewReader(buf[:n])
+	e = binary.Read(br, binary.LittleEndian, d)
+	return n/2, e
+}
+
+func (w *LnrPcmWav) Write(d []int16) (int, error) {
+	e:=binary.Write(w.File, binary.LittleEndian, d)
+	if e != nil {
+		return 0, e
+	}
+	return len(d), e
 }
 
 func (w *LnrPcmWav) Close() error {
 	if w.File == nil {
 		return errors.New("File is nil.")
 	}
-	if w.Flag == os.O_RDWR {
+	if w.flag == os.O_RDWR {
 		fi, _ := w.File.Stat()
 		size := fi.Size()
 		if _, e := w.File.WriteAt(toBytes(int32(size-8)), 4); e != nil {
